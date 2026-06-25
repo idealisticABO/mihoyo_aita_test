@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.routes import config as config_routes
 from app.api.routes import files as files_routes
@@ -33,6 +34,42 @@ async def lifespan(app: FastAPI):
     await task_manager.shutdown()
 
 
+class UTF8JSONResponse(JSONResponse):
+    media_type = "application/json; charset=utf-8"
+
+
+class CharsetMiddleware:
+    """Ensure all JSON responses include charset=utf-8."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                # Replace or add Content-Type with charset
+                new_headers = []
+                found_ct = False
+                for k, v in headers:
+                    if k == b"content-type" and b"charset" not in v:
+                        new_headers.append((k, v + b"; charset=utf-8"))
+                        found_ct = True
+                    else:
+                        new_headers.append((k, v))
+                if not found_ct:
+                    # No Content-Type at all (unlikely for JSON)
+                    pass
+                message = {**message, "headers": new_headers}
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
@@ -40,6 +77,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         description="Blender → ComfyUI → Texture Reconstruction pipeline",
         lifespan=lifespan,
+        default_response_class=UTF8JSONResponse,
     )
 
     origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
@@ -50,6 +88,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(CharsetMiddleware)
 
     app.include_router(system_routes.router, prefix="/api/system", tags=["system"])
     app.include_router(config_routes.router, prefix="/api/config", tags=["config"])
