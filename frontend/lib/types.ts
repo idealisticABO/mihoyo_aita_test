@@ -35,6 +35,10 @@ export type ViewState = {
   render_path?: string | null;
   inpaint_path?: string | null;       // 差分遮罩 (给 reconstruct 用)
   ai_wear_path?: string | null;        // AI 生成的磨损图 (预览用)
+  bg_removed_path?: string | null;     // 选中的去背景图 (作为 inpaint 输入)
+  bg_candidates?: Record<string, string>; // {inspyrenet|bria|sam: rel_path}
+  upscaled_path?: string | null;       // SeedVR2 放大后的高清图
+  upscale_enabled?: boolean;           // 是否启用放大图作为 inpaint 输入
   inpaint_status: "pending" | "running" | "completed" | "failed" | "skipped";
   prompt_id?: string | null;
   started_at?: string | null;

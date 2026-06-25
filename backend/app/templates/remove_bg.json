@@ -1,0 +1,106 @@
+{
+  "1": {
+    "inputs": {
+      "threshold": 0.5,
+      "torchscript_jit": "default",
+      "image": ["2", 0]
+    },
+    "class_type": "InspyrenetRembgAdvanced",
+    "_meta": {"title": "Inspyrenet Rembg Advanced"}
+  },
+  "2": {
+    "inputs": {
+      "image": "__INJECT_INPUT_IMAGE__"
+    },
+    "class_type": "LoadImage",
+    "_meta": {"title": "加载图像"}
+  },
+  "100": {
+    "inputs": {
+      "images": ["1", 0],
+      "filename_prefix": "bg_inspyrenet"
+    },
+    "class_type": "SaveImage",
+    "_meta": {"title": "保存 - InspyrenetRembg"}
+  },
+  "23": {
+    "inputs": {
+      "rmbgmodel": ["28", 0],
+      "image": ["2", 0]
+    },
+    "class_type": "BRIA_RMBG_Zho",
+    "_meta": {"title": "🧹BRIA RMBG"}
+  },
+  "28": {
+    "inputs": {},
+    "class_type": "BRIA_RMBG_ModelLoader_Zho",
+    "_meta": {"title": "🧹BRIA_RMBG Model Loader"}
+  },
+  "101": {
+    "inputs": {
+      "images": ["23", 0],
+      "filename_prefix": "bg_bria"
+    },
+    "class_type": "SaveImage",
+    "_meta": {"title": "保存 - BRIA RMBG"}
+  },
+  "29": {
+    "inputs": {
+      "model_name": "sam_vit_h (2.56GB)"
+    },
+    "class_type": "SAMModelLoader (segment anything)",
+    "_meta": {"title": "SAMModelLoader"}
+  },
+  "36": {
+    "inputs": {
+      "model_name": "GroundingDINO_SwinT_OGC (694MB)"
+    },
+    "class_type": "GroundingDinoModelLoader (segment anything)",
+    "_meta": {"title": "GroundingDinoModelLoader"}
+  },
+  "43": {
+    "inputs": {
+      "String": "__INJECT_PROMPT__"
+    },
+    "class_type": "String",
+    "_meta": {"title": "Prompt"}
+  },
+  "46": {
+    "inputs": {
+      "text": ["43", 0],
+      "model_name": "HY-MT1.5-1.8B-FP8",
+      "target_language": "English / 英语",
+      "max_new_tokens": 1024,
+      "temperature": 0.7,
+      "top_p": 0.6,
+      "top_k": 20,
+      "repetition_penalty": 1.05,
+      "dtype": "auto",
+      "download_source": "ModelScope",
+      "download_timeout_minutes": 30,
+      "force_redownload": false,
+      "custom_target_language": ""
+    },
+    "class_type": "TencentHunyuanMTTranslate",
+    "_meta": {"title": "Hunyuan MT 翻译"}
+  },
+  "35": {
+    "inputs": {
+      "prompt": ["46", 0],
+      "threshold": 0.3,
+      "sam_model": ["29", 0],
+      "grounding_dino_model": ["36", 0],
+      "image": ["2", 0]
+    },
+    "class_type": "GroundingDinoSAMSegment (segment anything)",
+    "_meta": {"title": "GroundingDinoSAMSegment"}
+  },
+  "102": {
+    "inputs": {
+      "images": ["35", 0],
+      "filename_prefix": "bg_sam"
+    },
+    "class_type": "SaveImage",
+    "_meta": {"title": "保存 - SAM+DINO"}
+  }
+}

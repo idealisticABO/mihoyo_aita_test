@@ -12,6 +12,11 @@ const ModelViewer = dynamic(() => import("@/components/modelviewer").then((m) =>
   loading: () => null,
 });
 
+const RemoveBgDialog = dynamic(() => import("@/components/removebg").then((m) => ({ default: m.RemoveBgDialog })), {
+  ssr: false,
+  loading: () => null,
+});
+
 export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [task, setTask] = useState<Task | null>(null);
@@ -20,6 +25,7 @@ export default function TaskDetailPage() {
   const [wearModels, setWearModels] = useState<{ key: string; label: string }[]>([]);
   const [regenModel, setRegenModel] = useState<string>("");  // "" = 使用任务默认
   const [viewerOpen, setViewerOpen] = useState(false);  // 3D 预览弹窗
+  const [bgDialogCam, setBgDialogCam] = useState<string | null>(null);  // 去背景弹窗所在视角
   const logBoxRef = useRef<HTMLPreElement>(null);
 
   useEffect(() => {
@@ -188,7 +194,14 @@ export default function TaskDetailPage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {task.views.map((v) => (
-            <ViewCard key={v.cam} task={task} view={v} bump={bumps[v.cam] || 0} onRegenerate={() => regenerate(v.cam)} />
+            <ViewCard
+              key={v.cam}
+              task={task}
+              view={v}
+              bump={bumps[v.cam] || 0}
+              onRegenerate={() => regenerate(v.cam)}
+              onRemoveBg={() => setBgDialogCam(v.cam)}
+            />
           ))}
         </div>
       </section>
@@ -211,6 +224,19 @@ export default function TaskDetailPage() {
       {viewerOpen && glbUrl && (
         <ModelViewer url={glbUrl} onClose={() => setViewerOpen(false)} />
       )}
+
+      {bgDialogCam && (() => {
+        const v = task.views.find((x) => x.cam === bgDialogCam);
+        if (!v) return null;
+        return (
+          <RemoveBgDialog
+            task={task}
+            view={v}
+            onClose={() => setBgDialogCam(null)}
+            onUpdated={(t) => setTask(t)}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -220,11 +246,13 @@ function ViewCard({
   view,
   bump,
   onRegenerate,
+  onRemoveBg,
 }: {
   task: Task;
   view: ViewState;
   bump: number;
   onRegenerate: () => void;
+  onRemoveBg: () => void;
 }) {
   const renderUrl = view.render_path ? api.filePathToUrl(task.id, view.render_path) : "";
   const inpaintUrl = view.inpaint_path
@@ -257,10 +285,60 @@ function ViewCard({
 
       {view.error && <div className="mt-2 text-xs text-rose-300 truncate" title={view.error}>{view.error}</div>}
 
+      {view.bg_removed_path && (
+        <div className="mt-2 text-[10px] text-emerald-400">
+          ✓ 使用去背景图作为 inpaint 输入
+        </div>
+      )}
+      {!view.bg_removed_path && view.upscale_enabled && view.upscaled_path && (
+        <div className="mt-2 text-[10px] text-sky-400">
+          ✓ 使用放大图作为 inpaint 输入
+        </div>
+      )}
+      {view.upscaled_path && !view.upscale_enabled && !view.bg_removed_path && (
+        <div className="mt-2 text-[10px] text-slate-500">
+          ⚠ 已生成放大图但未启用
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-1 mt-3">
+        <button
+          onClick={onRemoveBg}
+          disabled={!view.render_path}
+          className="btn-ghost text-xs disabled:opacity-50"
+          title="跳出去背景选择弹窗"
+        >
+          ✂ 去背景
+        </button>
+        <button
+          onClick={async () => {
+            try {
+              await api.upscaleView(task.id, view.cam, 2048);
+            } catch (e) { alert(String(e)); }
+          }}
+          disabled={!view.render_path}
+          className="btn-ghost text-xs disabled:opacity-50"
+          title="调用 SeedVR2 超分达到 2048px"
+        >
+          🔍 放大
+        </button>
+      </div>
+      {view.upscaled_path && (
+        <button
+          onClick={async () => {
+            try {
+              await api.useUpscale(task.id, view.cam, !view.upscale_enabled);
+            } catch (e) { alert(String(e)); }
+          }}
+          className={`btn-ghost text-xs w-full mt-1 ${view.upscale_enabled ? "text-sky-300 border border-sky-700/40" : ""}`}
+        >
+          {view.upscale_enabled ? "✓ 已启用放大图" : "启用放大图作为 inpaint 输入"}
+        </button>
+      )}
       <button
         onClick={onRegenerate}
         disabled={view.inpaint_status === "running" || !view.render_path}
-        className="btn-ghost text-xs w-full mt-3 disabled:opacity-50"
+        className="btn-ghost text-xs w-full mt-1 disabled:opacity-50"
       >
         重新生成 inpaint
       </button>

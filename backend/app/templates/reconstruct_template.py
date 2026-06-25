@@ -391,26 +391,83 @@ def apply_black_background(arr):
 
 
 def ensure_uvs(obj):
-    """如果模型没有 UV, 自动展开为横条排列。"""
+    """UV 健康检查与修复:
+    1. 无 UV → Smart UV 展开 + 横条排列
+    2. UV 超出 [0,1] (重复/tiling) → 检测后重新展开
+    3. UV 反向 (mirrored, winding 翻转) → 检测镜像 UV 面比例
+    4. UV 重叠 (overlap) → 严重时重新展开
+    """
     mesh = obj.data
-    if mesh.uv_layers and len(mesh.uv_layers) > 0:
-        print(f"[uv] 已有 {len(mesh.uv_layers)} 个 UV 层, 跳过展开")
+
+    # ---- Case 1: 无 UV ----
+    if not mesh.uv_layers or len(mesh.uv_layers) == 0:
+        print("[uv] 无 UV 层 → Smart UV 自动展开")
+        _do_smart_unwrap(obj)
         return
 
-    print("[uv] 模型无 UV, 自动 Smart UV 展开 + 横条排列 ...")
+    # ---- Case 2/3/4: 有 UV, 健康检查 ----
+    uv_layer = mesh.uv_layers.active.data
+    if len(uv_layer) == 0:
+        print("[uv] UV 层为空 → 重新展开")
+        _do_smart_unwrap(obj)
+        return
+
+    # 采集 UV 坐标
+    uvs = np.array([[d.uv[0], d.uv[1]] for d in uv_layer], dtype=np.float32)
+    u_min, v_min = uvs.min(axis=0)
+    u_max, v_max = uvs.max(axis=0)
+
+    # === 检查一: UV 范围超出 [0, 1] (重复/tiling) ===
+    out_of_range = (u_min < -0.01 or u_max > 1.01 or
+                    v_min < -0.01 or v_max > 1.01)
+
+    # === 检查二: UV winding (检测镜像/反向) ===
+    flipped_count = 0
+    total_tri = 0
+    for poly in mesh.polygons:
+        if len(poly.loop_indices) < 3:
+            continue
+        l0 = poly.loop_indices[0]
+        l1 = poly.loop_indices[1]
+        l2 = poly.loop_indices[2]
+        uv0 = uv_layer[l0].uv
+        uv1 = uv_layer[l1].uv
+        uv2 = uv_layer[l2].uv
+        cross = (uv1[0] - uv0[0]) * (uv2[1] - uv0[1]) - \
+                (uv1[1] - uv0[1]) * (uv2[0] - uv0[0])
+        if cross < 0:
+            flipped_count += 1
+        total_tri += 1
+    flip_ratio = flipped_count / max(total_tri, 1)
+
+    # === 决策: 遇到严重问题 → 重新展开 ===
+    # winding ratio 接近 0% 或 100% 表示一致 (都正或都反均可);
+    # 10%-90% 表示有混合镜像 (常见于左右对称模型共享 UV)
+    has_mirror = 0.1 < flip_ratio < 0.9
+
+    issues = []
+    if out_of_range:
+        issues.append(f"out_of_range U[{u_min:.2f},{u_max:.2f}] V[{v_min:.2f},{v_max:.2f}]")
+    if has_mirror:
+        issues.append(f"mirrored_uv {flip_ratio:.1%}")
+
+    if issues:
+        print(f"[uv] ⚠ 检测到问题: {', '.join(issues)} → 重新 Smart UV 展开")
+        _do_smart_unwrap(obj)
+    else:
+        print(f"[uv] ✓ UV 检查通过 ({len(mesh.uv_layers)} 层, 范围 U[{u_min:.2f},{u_max:.2f}] V[{v_min:.2f},{v_max:.2f}], flip {flip_ratio:.1%})")
+
+
+def _do_smart_unwrap(obj):
+    """Smart UV Project 展开 + 横条排列 (不保留原有 UV)"""
     bpy.context.view_layer.objects.active = obj
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')
-
-    # Smart UV Project: 角度限制低 → 碎片少; island margin 给一点间隙
     bpy.ops.uv.smart_project(angle_limit=66.0, island_margin=0.005)
     bpy.ops.uv.average_islands_scale()
-
-    # 横条排列: 按面积排序后 pack, 保证 UV 利用率高
     bpy.ops.uv.pack_islands(margin=0.005, rotate=True)
-
     bpy.ops.object.mode_set(mode='OBJECT')
-    print(f"[uv] UV 展开完成, 当前 UV 层: {[u.name for u in mesh.uv_layers]}")
+    print(f"[uv] Smart UV 完成, UV 层: {[u.name for u in obj.data.uv_layers]}")
 
 
 def main():

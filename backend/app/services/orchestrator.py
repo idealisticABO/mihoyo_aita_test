@@ -179,6 +179,7 @@ class Orchestrator:
 
         self.task.outputs["inpaint"] = []
         idx = 0
+        settings = get_settings()
         for cam in CAMERA_NAMES:
             idx += 1
             v = self.task.view(cam)
@@ -187,6 +188,18 @@ class Orchestrator:
                 v.inpaint_status = "skipped"
                 v.error = "no render"
                 continue
+            # 优先使用选中的去背景图代替渲染图
+            input_path = render_path
+            if v.bg_removed_path:
+                bg_path = settings.data_dir / v.bg_removed_path
+                if bg_path.exists():
+                    input_path = bg_path
+                    await self._log(f"[inpaint] {cam}: 使用去背景图 ({Path(v.bg_removed_path).name})")
+            elif v.upscale_enabled and v.upscaled_path:
+                up_path = settings.data_dir / v.upscaled_path
+                if up_path.exists():
+                    input_path = up_path
+                    await self._log(f"[inpaint] {cam}: 使用放大图 ({Path(v.upscaled_path).name})")
             v.inpaint_status = "running"
             v.started_at = _now()
             v.error = None
@@ -210,7 +223,7 @@ class Orchestrator:
                         cfg=cfg,
                         task=self.task,
                         cam_name=cam,
-                        render_path=render_path,
+                        render_path=input_path,
                         output_dir=inpaint_dir,
                         log=self._log,
                     )
@@ -380,6 +393,17 @@ async def regenerate_view(task: Task, cam: str, wear_model: str | None = None) -
     if not render_path.exists():
         raise RuntimeError(f"render 不存在: {render_path}")
 
+    # 优先使用选中的去背景图
+    input_path = render_path
+    if v.bg_removed_path:
+        bg_path = data_dir / v.bg_removed_path
+        if bg_path.exists():
+            input_path = bg_path
+    elif v.upscale_enabled and v.upscaled_path:
+        up_path = data_dir / v.upscaled_path
+        if up_path.exists():
+            input_path = up_path
+
     cfg = await settings_store.get()
 
     async def _log(line: str) -> None:
@@ -389,10 +413,10 @@ async def regenerate_view(task: Task, cam: str, wear_model: str | None = None) -
     v.started_at = _now()
     v.error = None
     await task_manager.update(task)
-    await _log(f"[regenerate] {cam}: start (model={wear_model or getattr(task.params, 'wear_model', 'nano_banana')})")
+    await _log(f"[regenerate] {cam}: start (model={wear_model or getattr(task.params, 'wear_model', 'nano_banana')}{', 使用去背景图' if input_path is not render_path else ''})")
 
     try:
-        mask_path, ai_wear_path_obj = await inpaint_single_view(cfg, task, cam, render_path, inpaint_dir, _log, wear_model=wear_model)
+        mask_path, ai_wear_path_obj = await inpaint_single_view(cfg, task, cam, input_path, inpaint_dir, _log, wear_model=wear_model)
         rel_mask = safe_relative(data_dir, mask_path)
         v.inpaint_path = rel_mask
         v.ai_wear_path = safe_relative(data_dir, ai_wear_path_obj) if ai_wear_path_obj else None

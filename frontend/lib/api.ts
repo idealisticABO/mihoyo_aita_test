@@ -38,6 +38,17 @@ export const api = {
   reconstructTask: (id: string) => http<Task>(`/api/tasks/${id}/reconstruct`, { method: "POST" }),
   regenerateView: (id: string, cam: string, wearModel?: string) =>
     http<Task>(`/api/tasks/${id}/views/${cam}/regenerate${wearModel ? `?wear_model=${wearModel}` : ""}`, { method: "POST" }),
+  removeBgRun: (id: string, cam: string, prompt: string, methods: string[]) =>
+    http<Task>(
+      `/api/tasks/${id}/views/${cam}/remove-bg?prompt=${encodeURIComponent(prompt)}&methods=${methods.join(",")}`,
+      { method: "POST" }
+    ),
+  selectBg: (id: string, cam: string, method: string) =>
+    http<Task>(`/api/tasks/${id}/views/${cam}/select-bg?method=${method}`, { method: "POST" }),
+  upscaleView: (id: string, cam: string, resolution: number = 2048) =>
+    http<Task>(`/api/tasks/${id}/views/${cam}/upscale?resolution=${resolution}`, { method: "POST" }),
+  useUpscale: (id: string, cam: string, enabled: boolean) =>
+    http<Task>(`/api/tasks/${id}/views/${cam}/use-upscale?enabled=${enabled}`, { method: "POST" }),
   getWorkflowModels: () => http<{ items: { key: string; label: string; desc: string }[] }>("/api/tasks/workflow-models"),
   resetTask: (id: string) => http<Task>(`/api/tasks/${id}/reset`, { method: "POST" }),
 

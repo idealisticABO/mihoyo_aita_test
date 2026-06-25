@@ -234,6 +234,188 @@ async def regenerate_view_route(task_id: str, cam: str, wear_model: str | None =
     return t
 
 
+@router.post("/{task_id}/views/{cam}/reset", response_model=Task)
+async def reset_view_route(task_id: str, cam: str) -> Task:
+    """仅清理该视角的 inpaint 状态/路径/错误，让重新生成可以重跑。"""
+    if cam not in CAMERA_NAMES:
+        raise HTTPException(status_code=400, detail=f"unknown camera: {cam}")
+    t = await task_manager.get(task_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    v = t.view(cam)
+    v.inpaint_status = "pending"
+    v.error = None
+    await task_manager.update(t)
+    return t
+
+
+@router.post("/{task_id}/views/{cam}/remove-bg", response_model=Task)
+async def remove_bg_route(
+    task_id: str,
+    cam: str,
+    prompt: str = Query(default=""),
+    methods: str = Query(default="inspyrenet,bria,sam"),
+) -> Task:
+    """为某一视角的渲染图跑三种去背景方法, 结果存到
+    outputs/<task>/bg_removed/{inspyrenet,bria,sam}_view_<cam>.png 并填到
+    view.bg_candidates, 供前端选择。并不自动选中 (selected by user via
+    select-bg 路由)。"""
+    if cam not in CAMERA_NAMES:
+        raise HTTPException(status_code=400, detail=f"unknown camera: {cam}")
+    t = await task_manager.get(task_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    v = t.view(cam)
+    if not v.render_path:
+        raise HTTPException(status_code=400, detail=f"{cam} 还没渲染图")
+
+    method_list = [m.strip() for m in methods.split(",") if m.strip()]
+    if not method_list:
+        raise HTTPException(status_code=400, detail="至少选一种方法")
+
+    settings = get_settings()
+    render_path = settings.data_dir / v.render_path
+    out_dir = settings.data_dir / "outputs" / task_id / "bg_removed"
+    bg_prompt = prompt or t.name or "foreground object"
+
+    async def _log(line: str) -> None:
+        await task_manager.append_log(task_id, line)
+
+    asyncio.create_task(
+        _run_remove_bg_bg(t, cam, render_path, out_dir, bg_prompt, method_list, _log)
+    )
+    return t
+
+
+async def _run_remove_bg_bg(
+    task: Task,
+    cam: str,
+    render_path: Path,
+    out_dir: Path,
+    prompt: str,
+    methods: list[str],
+    log_cb,
+) -> None:
+    """后台跑 remove-bg 并将路径写回 view.bg_candidates。"""
+    from app.services.remove_bg import run_remove_bg
+    from app.services.settings_store import settings_store as _settings_store
+
+    cfg = await _settings_store.get()
+    settings = get_settings()
+    try:
+        results = await run_remove_bg(
+            cfg, render_path, out_dir, prompt=prompt, methods=methods, log_cb=log_cb
+        )
+        # 将结果路径转为相对 data_dir
+        v = task.view(cam)
+        for m, p in results.items():
+            try:
+                rel = str(p.relative_to(settings.data_dir)).replace("\\", "/")
+            except ValueError:
+                rel = str(p)
+            v.bg_candidates[m] = rel
+        await task_manager.update(task)
+        await log_cb(f"[rmbg] {cam} 完成, 获得 {len(results)} 张候选图")
+    except Exception as e:
+        await log_cb(f"[rmbg] ⚠ {cam} 失败: {e}")
+
+
+@router.post("/{task_id}/views/{cam}/select-bg", response_model=Task)
+async def select_bg_route(task_id: str, cam: str, method: str = Query(...)) -> Task:
+    """选中某种去背景结果作为 inpaint 输入；method 传 'none' 可取消。"""
+    if cam not in CAMERA_NAMES:
+        raise HTTPException(status_code=400, detail=f"unknown camera: {cam}")
+    t = await task_manager.get(task_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    v = t.view(cam)
+    if method == "none":
+        v.bg_removed_path = None
+    elif method in v.bg_candidates:
+        v.bg_removed_path = v.bg_candidates[method]
+    else:
+        raise HTTPException(status_code=400, detail=f"未知方法: {method}")
+    await task_manager.update(t)
+    return t
+
+
+@router.post("/{task_id}/views/{cam}/upscale", response_model=Task)
+async def upscale_view_route(
+    task_id: str,
+    cam: str,
+    resolution: int = Query(default=2048),
+) -> Task:
+    """为某一视角的渲染图跑 SeedVR2 放大。默认 2048px, 不自动启用 (upscale_enabled 仍为 False)。”””
+    """
+    if cam not in CAMERA_NAMES:
+        raise HTTPException(status_code=400, detail=f"unknown camera: {cam}")
+    t = await task_manager.get(task_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    v = t.view(cam)
+    if not v.render_path:
+        raise HTTPException(status_code=400, detail=f"{cam} 还没渲染图")
+
+    settings = get_settings()
+    render_path = settings.data_dir / v.render_path
+    out_dir = settings.data_dir / "outputs" / task_id / "upscaled"
+
+    async def _log(line: str) -> None:
+        await task_manager.append_log(task_id, line)
+
+    asyncio.create_task(
+        _run_upscale_bg(t, cam, render_path, out_dir, resolution, _log)
+    )
+    return t
+
+
+async def _run_upscale_bg(
+    task: Task,
+    cam: str,
+    render_path: Path,
+    out_dir: Path,
+    resolution: int,
+    log_cb,
+) -> None:
+    """后台跑 upscale 并将路径写回 view.upscaled_path。"""
+    from app.services.upscale import run_upscale
+    from app.services.settings_store import settings_store as _settings_store
+
+    cfg = await _settings_store.get()
+    settings = get_settings()
+    try:
+        out_path = await run_upscale(
+            cfg, render_path, out_dir, resolution=resolution, log_cb=log_cb
+        )
+        v = task.view(cam)
+        try:
+            rel = str(out_path.relative_to(settings.data_dir)).replace("\\", "/")
+        except ValueError:
+            rel = str(out_path)
+        v.upscaled_path = rel
+        # 产出后不自动启用, 等用户点 "使用放大图"
+        await task_manager.update(task)
+        await log_cb(f"[upscale] {cam} 完成 → {rel}")
+    except Exception as e:
+        await log_cb(f"[upscale] ⚠ {cam} 失败: {e}")
+
+
+@router.post("/{task_id}/views/{cam}/use-upscale", response_model=Task)
+async def use_upscale_route(task_id: str, cam: str, enabled: bool = Query(...)) -> Task:
+    """启用/关闭放大图作为 inpaint 输入。"""
+    if cam not in CAMERA_NAMES:
+        raise HTTPException(status_code=400, detail=f"unknown camera: {cam}")
+    t = await task_manager.get(task_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    v = t.view(cam)
+    if enabled and not v.upscaled_path:
+        raise HTTPException(status_code=400, detail=f"{cam} 还没生成放大图")
+    v.upscale_enabled = enabled
+    await task_manager.update(t)
+    return t
+
+
 @router.post("/{task_id}/reset", response_model=Task)
 async def reset_task(task_id: str) -> Task:
     """Force a stuck task back to `failed` so it can be retried."""
@@ -245,7 +427,7 @@ async def reset_task(task_id: str) -> Task:
 
 # ---------- file access ----------
 
-_VALID_KINDS = {"renders", "inpaint", "textures", "debug"}
+_VALID_KINDS = {"renders", "inpaint", "textures", "debug", "bg_removed", "upscaled"}
 
 
 @router.get("/{task_id}/files/{kind}/{name:path}")

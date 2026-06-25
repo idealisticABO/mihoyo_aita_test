@@ -53,6 +53,16 @@ class ViewState(BaseModel):
     inpaint_path: str | None = None            # ComfyUI 差分遮罩 (按输入图原名重命名后)
     ai_wear_path: str | None = None            # AI 生成的磨损图 (节点 21)
     inpaint_status: ViewStatus = "pending"
+
+    # 背景去除 (可选, 不开启时为空)
+    bg_removed_path: str | None = None         # 选中的去背景结果, 用作 inpaint 输入
+    bg_candidates: dict[str, str] = Field(
+        default_factory=dict
+    )                                          # {"inspyrenet": rel_path, "bria": ..., "sam": ...}
+
+    # 高清放大 (可选, SeedVR2)
+    upscaled_path: str | None = None           # 放大后的高清图, 选中后会作为 inpaint 输入
+    upscale_enabled: bool = False              # 是否启用放大后的图
     prompt_id: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
