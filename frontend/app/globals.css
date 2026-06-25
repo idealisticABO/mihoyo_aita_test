@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background: #0b0d12;
+  color: #e6e9f2;
+}
+
+.card {
+  @apply bg-ink-800 border border-ink-600 rounded-xl shadow-lg;
+}
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition;
+}
+.btn-primary {
+  @apply btn bg-accent-600 hover:bg-accent-500 text-white;
+}
+.btn-ghost {
+  @apply btn bg-ink-700 hover:bg-ink-600 text-slate-100 border border-ink-500;
+}
+.input {
+  @apply w-full bg-ink-900 border border-ink-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent-500;
+}
+.label {
+  @apply text-xs uppercase tracking-wide text-slate-400 mb-1 block;
+}
+
+/* 磨损强度滑条 (暗色主题) — 必须覆盖 .input 全局样式 */
+.wear-slider {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 100% !important;
+  height: 6px !important;
+  background: linear-gradient(to right, #1e293b, #334155) !important;
+  border: none !important;
+  border-radius: 3px !important;
+  padding: 0 !important;
+  outline: none;
+  cursor: pointer;
+  display: block;
+}
+.wear-slider::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: #f59e0b !important;
+  border: 2px solid #0b0d12 !important;
+  box-shadow: 0 0 10px rgba(245,158,11,0.5) !important;
+  cursor: grab;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.wear-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 14px rgba(245,158,11,0.7) !important;
+}
+.wear-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.05);
+}
+.wear-slider::-moz-range-thumb {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: #f59e0b !important;
+  border: 2px solid #0b0d12 !important;
+  box-shadow: 0 0 10px rgba(245,158,11,0.5) !important;
+  cursor: grab;
+}
+.wear-slider::-moz-range-track {
+  background: linear-gradient(to right, #1e293b, #334155) !important;
+  height: 6px !important;
+  border-radius: 3px !important;
+  border: none !important;
+}

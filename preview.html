@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>产物预览</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box} body{background:#0b0d12;color:#e6e9f2;font-family:system-ui;padding:20px}
+  h2{margin:20px 0 10px;font-size:16px;border-bottom:1px solid #1f2533;padding-bottom:6px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+  .card{background:#11141c;border:1px solid #1f2533;border-radius:8px;padding:8px}
+  .card img{width:100%;aspect-ratio:1;object-fit:contain;background:#000;border-radius:4px}
+  .label{font-size:11px;font-family:monospace;color:#94a3b8;margin-top:4px;text-align:center}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+</style></head>
+<body>
+<h1>Task c7446b6ac4bf</h1>
+<div id="x">loading</div>
+<script>
+const T='c7446b6ac4bf',B='http://127.0.0.1:8000';
+(async()=>{
+const t=await fetch(B+'/api/tasks/'+T).then(r=>r.json());
+let h=`<p>状态:<b>${t.status}</b> | renders=${t.outputs.renders.length} inpaint=${t.outputs.inpaint.length} textures=${t.outputs.textures.length}</p>`;
+
+h+='<h2>最终贴图</h2><div class="grid">';
+for(const p of t.outputs.textures||[]){const n=p.split('/').pop();h+=`<div class="card"><img src="${B}/api/tasks/${T}/files/textures/${encodeURIComponent(n)}?inline=true"><div class="label">${n}</div></div>`}
+h+='</div>';
+
+h+='<h2>六视角 (render | inpaint)</h2><div class="grid">';
+for(const v of t.views||[]){
+const rn=v.render_path?v.render_path.split('/').pop():'',im=v.inpaint_path?v.inpaint_path.split('/').pop():'';
+h+=`<div class="card"><div class="pair"><div><img src="${B}/api/tasks/${T}/files/renders/${rn}?inline=true"><div class="label">render</div></div><div><img src="${B}/api/tasks/${T}/files/inpaint/${im}?inline=true"><div class="label">wear_mask</div></div></div><div class="label">${v.cam} (${v.inpaint_status})</div></div>`;
+}
+h+='</div>';
+
+h+='<h2>调试图</h2><div class="grid">';
+for(const p of t.outputs.debug||[]){const n=p.split('/').pop();h+=`<div class="card"><img src="${B}/api/tasks/${T}/files/textures/${encodeURIComponent(n)}?inline=true"><div class="label">${n}</div></div>`}
+h+='</div>';
+document.getElementById('x').innerHTML=h;
+})();
+</script>
+</body></html>

@@ -1,0 +1,452 @@
+{
+  "4": {
+    "inputs": {
+      "image": "ComfyUI_temp_puczm_00001_.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "渲染图输入"
+    }
+  },
+  "6": {
+    "inputs": {
+      "downscale_algorithm": "bilinear",
+      "upscale_algorithm": "bicubic",
+      "preresize": false,
+      "preresize_mode": "ensure minimum resolution",
+      "preresize_min_width": 1024,
+      "preresize_min_height": 1024,
+      "preresize_max_width": 16384,
+      "preresize_max_height": 16384,
+      "mask_fill_holes": true,
+      "mask_expand_pixels": 0,
+      "mask_invert": false,
+      "mask_blend_pixels": 32,
+      "mask_hipass_filter": 0.1,
+      "extend_for_outpainting": false,
+      "extend_up_factor": 1,
+      "extend_down_factor": 1,
+      "extend_left_factor": 1,
+      "extend_right_factor": 1,
+      "context_from_mask_extend_factor": 1.2,
+      "output_resize_to_target_size": true,
+      "output_target_width": [
+        "9",
+        0
+      ],
+      "output_target_height": [
+        "9",
+        0
+      ],
+      "output_padding": "32",
+      "device_mode": "gpu (much faster)",
+      "image": [
+        "40",
+        0
+      ],
+      "mask": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "InpaintCropImproved",
+    "_meta": {
+      "title": "✂️ Inpaint Crop"
+    }
+  },
+  "8": {
+    "inputs": {
+      "images": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "预览图像"
+    }
+  },
+  "9": {
+    "inputs": {
+      "Number": "2048"
+    },
+    "class_type": "Int",
+    "_meta": {
+      "title": "Int"
+    }
+  },
+  "15": {
+    "inputs": {
+      "text": "nano-banana-pro"
+    },
+    "class_type": "CR Text",
+    "_meta": {
+      "title": "🔤 CR Text"
+    }
+  },
+  "18": {
+    "inputs": {
+      "selection_setting": 2,
+      "input_1": [
+        "15",
+        0
+      ],
+      "input_2": [
+        "19",
+        0
+      ]
+    },
+    "class_type": "TwoWaySwitch",
+    "_meta": {
+      "title": "Switch (Two Way)"
+    }
+  },
+  "19": {
+    "inputs": {
+      "text": "gemini-3.1-flash-image-preview"
+    },
+    "class_type": "CR Text",
+    "_meta": {
+      "title": "🔤 CR Text"
+    }
+  },
+  "21": {
+    "inputs": {
+      "filename_prefix": "AI_wear_out",
+      "images": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "25": {
+    "inputs": {
+      "text": "The structure, dimensions, part positions, and viewpoint of the input model must be strictly preserved, with only localized surface wear treatment applied.\n\nWear effect requirements: Paint chipping is only allowed to occur at transitions, edges, raised steps, chamfered corners, and high-frequency contact friction boundaries; the degree of paint chipping is significantly enhanced in these areas, creating a larger area, more continuous, and clearer paint peeling effect; the underlying original metal color must be exposed after the paint chipping, presenting a realistic exposed metal texture, with slight metallic reflection and polishing marks allowed; the edges of the chipped paint should be natural and irregular, conforming to the peeling characteristics of real mechanical parts after repeated collisions and friction;\n\nExcept for the aforementioned transitions, edges, and contact areas, other large planar areas, the main surface, and non-contact areas remain unchanged;\n\nadditional paint chipping, irrelevant scratches, overall fading, dirt diffusion, or full surface aging are not allowed.\n\nThe overall style is a relatively obvious but controlled edge paint chipping effect of real industrial parts, realistic, natural, and with clear details.\n\nIncrease the paint chipping intensity significantly, but confine it strictly to the turning edges, ridges, stepped corners, and contact boundaries only.\nDo not spread the damage onto the large flat surfaces."
+    },
+    "class_type": "JjkText",
+    "_meta": {
+      "title": "提示词输入"
+    }
+  },
+  "31": {
+    "inputs": {
+      "stitcher": [
+        "6",
+        0
+      ],
+      "inpainted_image": [
+        "34",
+        0
+      ]
+    },
+    "class_type": "InpaintStitchImproved",
+    "_meta": {
+      "title": "✂️ Inpaint Stitch"
+    }
+  },
+  "32": {
+    "inputs": {
+      "torchscript_jit": "default",
+      "image": [
+        "34",
+        0
+      ]
+    },
+    "class_type": "InspyrenetRembg",
+    "_meta": {
+      "title": "Inspyrenet Rembg"
+    }
+  },
+  "33": {
+    "inputs": {
+      "images": [
+        "42",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "预览图像"
+    }
+  },
+  "34": {
+    "inputs": {
+      "width": [
+        "35",
+        0
+      ],
+      "height": [
+        "35",
+        1
+      ],
+      "upscale_method": "nearest-exact",
+      "keep_proportion": "stretch",
+      "pad_color": "0, 0, 0",
+      "crop_position": "center",
+      "divisible_by": 2,
+      "device": "cpu",
+      "image": [
+        "61",
+        0
+      ]
+    },
+    "class_type": "ImageResizeKJv2",
+    "_meta": {
+      "title": "Resize Image v2"
+    }
+  },
+  "35": {
+    "inputs": {
+      "image": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "GetImageSize+",
+    "_meta": {
+      "title": "🔧 Get Image Size"
+    }
+  },
+  "37": {
+    "inputs": {
+      "images": [
+        "34",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "预览图像"
+    }
+  },
+  "38": {
+    "inputs": {
+      "image": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "GetImageSize+",
+    "_meta": {
+      "title": "🔧 Get Image Size"
+    }
+  },
+  "39": {
+    "inputs": {
+      "width": [
+        "38",
+        0
+      ],
+      "height": [
+        "38",
+        1
+      ],
+      "batch_size": [
+        "38",
+        2
+      ],
+      "color": 6908265
+    },
+    "class_type": "EmptyImage",
+    "_meta": {
+      "title": "空图像"
+    }
+  },
+  "40": {
+    "inputs": {
+      "overlay_resize": "None",
+      "resize_method": "nearest-exact",
+      "rescale_factor": 1,
+      "width": 512,
+      "height": 512,
+      "x_offset": 0,
+      "y_offset": 0,
+      "rotation": 9.992007221626409e-15,
+      "opacity": 0,
+      "base_image": [
+        "39",
+        0
+      ],
+      "overlay_image": [
+        "4",
+        0
+      ],
+      "optional_mask": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "Image Overlay",
+    "_meta": {
+      "title": "Image Overlay"
+    }
+  },
+  "41": {
+    "inputs": {
+      "images": [
+        "40",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "预览图像"
+    }
+  },
+  "42": {
+    "inputs": {
+      "image": [
+        "31",
+        0
+      ],
+      "alpha": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "JoinImageWithAlpha",
+    "_meta": {
+      "title": "合并图像Alpha"
+    }
+  },
+  "43": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "42",
+        0
+      ],
+      "mask": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "SaveImageWithAlpha",
+    "_meta": {
+      "title": "Save Image With Alpha"
+    }
+  },
+  "49": {
+    "inputs": {
+      "align_mode": "none",
+      "edge_weight": 0.5,
+      "blur_ksize": 3,
+      "canny_low": 60,
+      "canny_high": 160,
+      "orb_features": 5000,
+      "orb_matches": 60,
+      "noise_floor": 0.06,
+      "gamma": 0.75,
+      "original": [
+        "4",
+        0
+      ],
+      "worn": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "AIDiffMaskNode",
+    "_meta": {
+      "title": "AI Diff Mask (差分遮罩)"
+    }
+  },
+  "51": {
+    "inputs": {
+      "filename_prefix": "wear",
+      "images": [
+        "49",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "保存图像"
+    }
+  },
+  "57": {
+    "inputs": {
+      "longer_edge": 1024,
+      "images": [
+        "6",
+        1
+      ]
+    },
+    "class_type": "ResizeImagesByLongerEdge",
+    "_meta": {
+      "title": "缩放图像（长边）"
+    }
+  },
+  "59": {
+    "inputs": {
+      "images": [
+        "57",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "预览图像"
+    }
+  },
+  "61": {
+    "inputs": {
+      "api_key": "ms-2f7de5fe-b4fe-4b5d-9ac1-e7999338fbee",
+      "prompt": [
+        "62",
+        0
+      ],
+      "model": "Qwen/Qwen-Image-Edit-2511",
+      "size": "1024x1024",
+      "image_url": "",
+      "image": [
+        "57",
+        0
+      ]
+    },
+    "class_type": "ModelScopeImageEdit",
+    "_meta": {
+      "title": "ModelScope Image Edit"
+    }
+  },
+  "62": {
+    "inputs": {
+      "text": [
+        "25",
+        0
+      ],
+      "model_name": "HY-MT1.5-1.8B-FP8",
+      "target_language": "Chinese / 中文",
+      "max_new_tokens": 3024,
+      "temperature": 0.7,
+      "top_p": 0.6,
+      "top_k": 20,
+      "repetition_penalty": 1.05,
+      "dtype": "auto",
+      "download_source": "ModelScope",
+      "download_timeout_minutes": 30,
+      "force_redownload": false,
+      "custom_target_language": ""
+    },
+    "class_type": "TencentHunyuanMTTranslate",
+    "_meta": {
+      "title": "Tencent Hunyuan MT Translate"
+    }
+  },
+  "63": {
+    "inputs": {
+      "text": [
+        "62",
+        0
+      ]
+    },
+    "class_type": "show_text_party",
+    "_meta": {
+      "title": "显示文本"
+    }
+  }
+}
