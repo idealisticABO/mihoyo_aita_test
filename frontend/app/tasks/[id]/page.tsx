@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { api } from "@/lib/api";
@@ -79,7 +79,7 @@ export default function TaskDetailPage() {
       <header className="card p-5 flex items-start justify-between gap-4">
         <div>
           <div className="text-xs text-slate-500 font-mono">{task.id}</div>
-          <h1 className="text-xl font-semibold">{task.name || "(未命名任务)"}</h1>
+          <EditableName task={task} onUpdate={(t) => setTask(t)} />
           <div className="mt-2 flex items-center gap-3 text-sm">
             <StatusBadge status={task.status} />
             <span className="text-slate-400">创建于 {new Date(task.created_at).toLocaleString()}</span>
@@ -392,5 +392,47 @@ function OutputGroup({ task, kind, title }: { task: Task; kind: "textures" | "de
         </ul>
       )}
     </div>
+  );
+}
+
+function EditableName({ task, onUpdate }: { task: Task; onUpdate: (t: Task) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(task.name || "");
+
+  const save = async () => {
+    const trimmed = name.trim();
+    if (trimmed && trimmed !== task.name) {
+      try {
+        const updated = await api.patchTask(task.id, { name: trimmed });
+        onUpdate(updated);
+      } catch {
+        setName(task.name || "");
+      }
+    } else {
+      setName(task.name || "");
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        className="input text-xl font-semibold w-full max-w-md"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); save(); }
+          if (e.key === "Escape") { setName(task.name || ""); setEditing(false); }
+        }}
+        autoFocus
+      />
+    );
+  }
+
+  return (
+    <h1 className="text-xl font-semibold cursor-pointer hover:text-slate-300" onClick={() => { setName(task.name || ""); setEditing(true); }} title="点击重命名">
+      {task.name || "(未命名任务)"}
+    </h1>
   );
 }

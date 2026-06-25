@@ -425,6 +425,15 @@ async def reset_task(task_id: str) -> Task:
     return t
 
 
+@router.delete("/{task_id}", response_model=dict)
+async def delete_task(task_id: str) -> dict:
+    """Delete a task from the index. Output files remain on disk."""
+    ok = await task_manager.delete(task_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return {"deleted": task_id}
+
+
 # ---------- file access ----------
 
 _VALID_KINDS = {"renders", "inpaint", "textures", "debug", "bg_removed", "upscaled"}

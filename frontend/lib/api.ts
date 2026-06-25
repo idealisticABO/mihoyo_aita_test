@@ -51,6 +51,7 @@ export const api = {
     http<Task>(`/api/tasks/${id}/views/${cam}/use-upscale?enabled=${enabled}`, { method: "POST" }),
   getWorkflowModels: () => http<{ items: { key: string; label: string; desc: string }[] }>("/api/tasks/workflow-models"),
   resetTask: (id: string) => http<Task>(`/api/tasks/${id}/reset`, { method: "POST" }),
+  deleteTask: (id: string) => http<{ deleted: string }>(`/api/tasks/${id}`, { method: "DELETE" }),
 
   getLogs: (id: string, tail = 500) =>
     fetch(`/api/tasks/${id}/logs?tail=${tail}`).then((r) => r.text()),

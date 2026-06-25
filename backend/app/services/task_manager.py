@@ -206,6 +206,18 @@ class TaskManager:
         await self._notify(task_id, {"event": "updated", "task": t.model_dump(mode="json")})
         return t
 
+    async def delete(self, task_id: str) -> bool:
+        """Delete a task from the index (keeps output files on disk)."""
+        async with self._lock:
+            t = self._tasks.pop(task_id, None)
+            if not t:
+                return False
+            if self.is_job_running(task_id):
+                self.cancel_job(task_id)
+        await self._persist()
+        await self._notify(task_id, {"event": "deleted"})
+        return True
+
     async def shutdown(self) -> None:
         for job in self._jobs.values():
             if not job.done():
