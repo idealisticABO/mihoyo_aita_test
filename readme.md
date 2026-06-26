@@ -42,6 +42,8 @@ python run.py
 
 默认监听 `http://127.0.0.1:8000`。Swagger UI: `http://127.0.0.1:8000/docs`。
 
+> 所有 JSON 响应强制带 `charset=utf-8`，确保中文显示正常。
+
 ### 2. 前端
 
 ```bash
@@ -144,6 +146,31 @@ inpaint 完成后**不会自动进入 reconstruct**。任务状态变为 `awaiti
 - 确认无误 → 点 **✓ 确认重建** (绿色按钮)
 - 重建完成后 → 点 **🔄 重新重建** 可用不同参数重新贴图 (不重跑 render/inpaint)
 
+### API 路由
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/tasks` | 列出所有任务 |
+| POST | `/api/tasks` | 创建任务 |
+| GET | `/api/tasks/{id}` | 获取单个任务 |
+| **PATCH** | `/api/tasks/{id}` | **任务重命名 `{"name": ...}`** |
+| **DELETE** | `/api/tasks/{id}` | **删除任务 (保留磁盘文件)** |
+| POST | `/api/tasks/{id}/run` | 运行任务 |
+| POST | `/api/tasks/{id}/retry` | 重试失败任务 |
+| POST | `/api/tasks/{id}/cancel` | 取消运行中任务 |
+| POST | `/api/tasks/{id}/continue` | 确认重建 (awaiting_confirm → reconstruct) |
+| POST | `/api/tasks/{id}/reconstruct` | 重新重建 (跳过 render/inpaint) |
+| POST | `/api/tasks/{id}/reset` | 强制重置为 failed |
+| POST | `/api/tasks/{id}/views/{cam}/regenerate` | 单视角重新 inpaint |
+| **POST** | `/api/tasks/{id}/views/{cam}/remove-bg` | **去背景执行** |
+| **POST** | `/api/tasks/{id}/views/{cam}/select-bg` | **选择去背景结果** |
+| **POST** | `/api/tasks/{id}/views/{cam}/upscale` | **高清放大** |
+| **POST** | `/api/tasks/{id}/views/{cam}/use-upscale` | **启用/关闭放大图** |
+| POST | `/api/tasks/{id}/views/{cam}/reset` | 重置视角 inpaint 状态 |
+| GET | `/api/tasks/{id}/files/{kind}/{name}` | 下载文件 |
+| GET | `/api/tasks/{id}/logs` | 获取日志 |
+| WS | `/api/tasks/{id}/ws` | WebSocket 实时推送 |
+
 ### 3D 模型预览
 
 completed 状态且重建完成(有GLB)时, 点击 **🧊 3D 预览**:
@@ -151,18 +178,69 @@ completed 状态且重建完成(有GLB)时, 点击 **🧊 3D 预览**:
 - 环境光 + 网格地面, 直观查看磨损贴图效果
 - 可下载 GLB 文件
 
-### 按钮逻辑
+### 背景去除 (Remove BG)
 
-每个任务状态只显示有意义的操作, 防止误操作:
+inpaint 阶段可选使用去背景图替代原渲染图作为输入，默认不开启:
+
+| 方法 | 特点 |
+|------|------|
+| **InspyrenetRembg** | 速度快，清晰前景效果好 |
+| **BRIA RMBG** | 边缘细节好(发丝/网格) |
+| **SAM + GroundingDINO** | 文本驱动，精确但慢，需 prompt |
+
+**使用流程**:
+1. 渲染完成后，在视角卡片点 ✂ 去背景
+2. 弹窗输入 prompt → 勾选方法 → 点 ▶ 运行
+3. 后台跑 ComfyUI，WebSocket 推送结果
+4. 点击选中一张候选图
+5. 点重新生成 inpaint → 用所选去背景图作为输入
+
+### 高清放大 (Upscale)
+
+基于 SeedVR2 视频超分模型对渲染图进行超分（默认 2048px），默认不启用:
+
+| 参数 | 说明 |
+|------|------|
+| DiT 模型 | `seedvr2_ema_3b_fp8_e4m3fn.safetensors` |
+| VAE 模型 | `ema_vae_fp16.safetensors` |
+| 默认分辨率 | 2048px |
+
+**使用流程**:
+1. 渲染完成后，在视角卡片点 🔍 放大
+2. 后台跑超分，完成后标记
+3. 点「启用放大图作为 inpaint 输入」
+4. 点重新生成 inpaint → 用放大图作为输入
+
+**输入优先级**: `去背景图 > 放大图 > 原渲染图`
+
+### UV 健康检查 (自动修复)
+
+`ensure_uvs()` 在展开 UV 前自动执行完整健康检查:
+
+| 检查项 | 检测方式 | 触发修复 |
+|--------|----------|----------|
+| **无 UV** | `mesh.uv_layers` 为空 | Smart UV 自动展开 |
+| **UV 超范围 (重复/tiling)** | 采集 UV 坐标 min/max，超出 ±0.01 | 重新 Smart UV 展开 |
+| **UV 反向 (镜像)** | 三角面 UV winding cross product，统计翻转比例 | 混合镜像(10-90%)时重新展开 |
+
+### 任务管理
+
+| 功能 | 位置 | 操作 |
+|------|------|------|
+| **重命名** | 任务列表 / 详情页标题 | 点击名称，内联编辑，Enter 保存 |
+| **删除** | 任务列表 (悬停显示) | 点删除 → 二次确认「确认/取消」 |
+
+### 详情页按钮逻辑
+
+每个任务状态只显示有意义的操作:
 
 | 状态 | 显示的按钮 |
-|---|---|
-| `pending / queued` | `▶ 启动` |
-| `running / rendering / inpainting / reconstructing` | `✕ 取消` |
-| `awaiting_confirm` | `✓ 确认重建` |
-| `completed` | `🧊 3D预览` + `🔄 重新重建` |
-| `failed` | `🔁 重试` + `🔄 重新重建`(如有inpaint) |
-| 所有非pending/queued | `⚙ 强制重置`(小字灰色,调试用) |
+|------|----------|
+| `pending / queued` | ▶ 启动 |
+| `running / rendering / inpainting / reconstructing` | ✕ 取消 |
+| `awaiting_confirm` | ✓ 确认重建 |
+| `completed` | 🧊 3D预览 + 🔄 重新重建 |
+| `failed` | 🔁 重试 + 🔄 重新重建(如有inpaint) |
 
 ### 启动前校验
 
@@ -183,6 +261,8 @@ data/
 ├── outputs/<task_id>/
 │   ├── renders/                   # Blender 6视角渲染 (view_cam_*.png)
 │   ├── inpaint/                   # ComfyUI 差分遮罩 (view_*_wear_mask.png)
+│   ├── bg_removed/                # 去背景结果 (bg_<method>_*.png)
+│   ├── upscaled/                  # 高清放大 (upscale_*.png)
 │   ├── textures/                  # 最终贴图 + GLB
 │   │   ├── Reconstructed_Albedo_final.png
 │   │   ├── Reconstructed_Albedo_final.glb   # 带贴图的3D模型
